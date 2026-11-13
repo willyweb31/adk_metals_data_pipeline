@@ -88,7 +88,9 @@ def fred_api_key() -> str:
 
 
 def adk_model() -> str:
-    return os.getenv("ADK_MODEL", "gemini-flash-latest")
+    # Flash-Lite by default: on the free tier, gemini-flash-latest often
+    # returns 503 "high demand". Override with ADK_MODEL in .env.
+    return os.getenv("ADK_MODEL", "gemini-flash-lite-latest")
 
 
 def storage_backend() -> str:
