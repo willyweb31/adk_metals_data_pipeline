@@ -20,7 +20,8 @@ adk run metals_pipeline "Refresh the metals price dashboard from 2018, focus on 
 
 ## Architecture
 
-<img width="2400" height="1261" alt="Metals Pipeline Architecture" src="https://github.com/user-attachments/assets/bcfe00bb-9634-4aed-9f73-056f29187130" />
+<img width="2400" height="1261" alt="Metals Pipeline Architecture (1)" src="https://github.com/user-attachments/assets/82958718-636b-435f-8da4-48e3bcba5f34" />
+
 
 
 The root agent is an ADK `Workflow` defined in [metals_pipeline/agent.py](metals_pipeline/agent.py):
