@@ -51,9 +51,13 @@ class IngestResult(BaseModel):
 class SeriesLatest(BaseModel):
     series_id: str
     label: str
+    kind: str          # "ppi" (index level) or "market" (USD per metric ton)
+    units: str
     as_of: str
-    index_value: float | None
+    value: float | None
+    mom_change: float | None
     mom_pct: float | None
+    yoy_change: float | None
     yoy_pct: float | None
     vol_12m: float | None
     high_5y: float | None

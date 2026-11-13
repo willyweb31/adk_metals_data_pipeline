@@ -15,7 +15,8 @@ def _check(name: str, series_id: str, passed: bool, detail: str) -> CheckResult:
 
 
 def check_series(series_id: str, g: pd.DataFrame, base_month: str,
-                 today: date) -> list[CheckResult]:
+                 today: date, max_staleness_days: int = config.MAX_STALENESS_DAYS,
+                 ) -> list[CheckResult]:
     rows = len(g)
     if rows == 0:
         return [_check("row_count", series_id, False, "zero rows returned")]
@@ -36,7 +37,7 @@ def check_series(series_id: str, g: pd.DataFrame, base_month: str,
         f"{gaps} gaps over one month, {not_month_start} non-month-start dates",
     ))
 
-    values = g["index_value"]
+    values = g["value"]
     non_positive = int((values <= 0).sum())
     out.append(_check("positive_values", series_id, non_positive == 0,
                       f"{non_positive} non-positive values"))
@@ -45,16 +46,16 @@ def check_series(series_id: str, g: pd.DataFrame, base_month: str,
     out.append(_check("null_share", series_id, null_share < config.MAX_NULL_SHARE,
                       f"{null_share:.1%} null (max {config.MAX_NULL_SHARE:.0%})"))
 
-    valid = g.dropna(subset=["index_value"]).sort_values("date")
+    valid = g.dropna(subset=["value"]).sort_values("date")
     if valid.empty:
         out.append(_check("freshness", series_id, False, "no numeric values"))
         return out
 
     latest_date = valid["date"].iloc[-1].date()
     age = (today - latest_date).days
-    out.append(_check("freshness", series_id, age <= config.MAX_STALENESS_DAYS,
+    out.append(_check("freshness", series_id, age <= max_staleness_days,
                       f"latest {latest_date.isoformat()} is {age} days old "
-                      f"(max {config.MAX_STALENESS_DAYS})"))
+                      f"(max {max_staleness_days})"))
 
     yoy = valid["yoy_pct"].iloc[-1] if "yoy_pct" in valid else float("nan")
     yoy_ok = pd.notna(yoy) and abs(yoy) <= config.MAX_ABS_LATEST_YOY_PCT
@@ -76,5 +77,8 @@ def run_checks(monthly: pd.DataFrame, requested: list[str], base_month: str,
         checks.append(_check("row_count", "*", False, "zero rows for all series"))
     for series_id in requested:
         g = monthly[monthly["series_id"] == series_id]
-        checks.extend(check_series(series_id, g, base_month, today))
+        staleness = (config.MARKET_MAX_STALENESS_DAYS
+                     if config.series_kind(series_id) == "market"
+                     else config.MAX_STALENESS_DAYS)
+        checks.extend(check_series(series_id, g, base_month, today, staleness))
     return QualityReport(passed=all(c.passed for c in checks), checks=checks)

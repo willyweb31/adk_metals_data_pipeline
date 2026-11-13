@@ -20,8 +20,10 @@ load_dotenv(PACKAGE_DIR / ".env", override=False)
 load_dotenv(REPO_ROOT / ".env", override=False)
 
 # --- Series allowlist -------------------------------------------------------
-# Six monthly BLS producer price indexes on FRED. Labels are NOT typed here;
-# they are pulled from FRED's `series` endpoint at ingest time.
+# Six monthly BLS producer price indexes plus five monthly IMF global market
+# prices in U.S. dollars per metric ton, all on FRED. Labels and units are NOT
+# typed here; they are pulled from FRED's `series` endpoint at ingest time.
+MARKET_GROUP = "Market price"
 SERIES: dict[str, str] = {
     "WPU10": "Headline index",
     "WPU101": "Steel family",
@@ -29,8 +31,18 @@ SERIES: dict[str, str] = {
     "WPU102501": "Nonferrous",
     "WPU102502": "Nonferrous",
     "PCU331110331110": "Industry view",
+    "PCOPPUSDM": MARKET_GROUP,
+    "PALUMUSDM": MARKET_GROUP,
+    "PNICKUSDM": MARKET_GROUP,
+    "PZINCUSDM": MARKET_GROUP,
+    "PIORECRUSDM": MARKET_GROUP,
 }
 DEFAULT_SERIES: list[str] = list(SERIES)
+
+
+def series_kind(series_id: str) -> str:
+    """'market' for USD market prices, 'ppi' for producer price indexes."""
+    return "market" if SERIES.get(series_id) == MARKET_GROUP else "ppi"
 
 # --- Plan defaults and limits -----------------------------------------------
 DEFAULT_START = "2018-01-01"
@@ -43,6 +55,9 @@ MIN_HISTORY_YEARS = 3
 # --- Quality gate thresholds --------------------------------------------------
 MIN_ROWS = 24
 MAX_STALENESS_DAYS = 90
+# IMF market prices are published about a month later than the BLS indexes,
+# so they get a longer freshness window.
+MARKET_MAX_STALENESS_DAYS = 120
 MAX_NULL_SHARE = 0.05
 MAX_ABS_LATEST_YOY_PCT = 100.0
 

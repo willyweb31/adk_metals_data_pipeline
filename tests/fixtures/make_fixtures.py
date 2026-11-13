@@ -3,6 +3,7 @@
 Values follow simple formulas so expected metrics can be checked by hand:
   WPU10:  200 + i   for month i = 0 (2019-01) .. 29 (2021-06); 2020-07 is "."
   WPU101: 300 + 3i  for the same months, no missing values
+  PCOPPUSDM: 6000 + 100i  U.S. dollars per metric ton, no missing values
 Run:  python tests/fixtures/make_fixtures.py
 """
 
@@ -43,6 +44,8 @@ def main() -> None:
         "WPU101": wrap("WPU101",
                        "Producer Price Index by Commodity: Metals and Metal Products: Iron and Steel",
                        "Index 1982=100", wpu101),
+        "PCOPPUSDM": wrap("PCOPPUSDM", "Global price of Copper", "U.S. Dollars per Metric Ton",
+                          [f"{6000 + 100 * i:.6f}" for i in range(30)]),
     }
     for sid, data in fixtures.items():
         (HERE / f"{sid}.json").write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")

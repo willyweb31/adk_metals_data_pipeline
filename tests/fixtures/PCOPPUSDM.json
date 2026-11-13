@@ -1,0 +1,201 @@
+{
+ "series_id": "PCOPPUSDM",
+ "fetched_at": "2021-07-15T12:00:00Z",
+ "run_id": "20210715T120000Z",
+ "request": {
+  "observation_start": "2019-01-01"
+ },
+ "series_info": {
+  "id": "PCOPPUSDM",
+  "title": "Global price of Copper",
+  "units": "U.S. Dollars per Metric Ton",
+  "frequency": "Monthly"
+ },
+ "response": {
+  "observation_start": "2019-01-01",
+  "units": "lin",
+  "count": 30,
+  "observations": [
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-01-01",
+    "value": "6000.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-02-01",
+    "value": "6100.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-03-01",
+    "value": "6200.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-04-01",
+    "value": "6300.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-05-01",
+    "value": "6400.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-06-01",
+    "value": "6500.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-07-01",
+    "value": "6600.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-08-01",
+    "value": "6700.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-09-01",
+    "value": "6800.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-10-01",
+    "value": "6900.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-11-01",
+    "value": "7000.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2019-12-01",
+    "value": "7100.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-01-01",
+    "value": "7200.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-02-01",
+    "value": "7300.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-03-01",
+    "value": "7400.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-04-01",
+    "value": "7500.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-05-01",
+    "value": "7600.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-06-01",
+    "value": "7700.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-07-01",
+    "value": "7800.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-08-01",
+    "value": "7900.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-09-01",
+    "value": "8000.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-10-01",
+    "value": "8100.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-11-01",
+    "value": "8200.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2020-12-01",
+    "value": "8300.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-01-01",
+    "value": "8400.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-02-01",
+    "value": "8500.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-03-01",
+    "value": "8600.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-04-01",
+    "value": "8700.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-05-01",
+    "value": "8800.000000"
+   },
+   {
+    "realtime_start": "2021-07-15",
+    "realtime_end": "2021-07-15",
+    "date": "2021-06-01",
+    "value": "8900.000000"
+   }
+  ]
+ }
+}

@@ -34,8 +34,16 @@ def test_all_series_outside_allowlist_is_an_error():
         make_plan(plan(series_ids=["NOT_A_SERIES"]), NOW)
 
 
-def test_empty_series_list_defaults_to_all_six():
-    assert len(make_plan(plan(series_ids=[]), NOW).series_ids) == 6
+def test_empty_series_list_defaults_to_every_allowlisted_series():
+    ids = make_plan(plan(series_ids=[]), NOW).series_ids
+    assert len(ids) == 11
+    assert {"WPU10", "PCOPPUSDM", "PIORECRUSDM"} <= set(ids)
+
+
+def test_market_price_ids_pass_the_allowlist():
+    p = make_plan(plan(series_ids=["pcoppusdm", "PALUMUSDM"]), NOW)
+    assert p.series_ids == ["PCOPPUSDM", "PALUMUSDM"]
+    assert not p.notes
 
 
 def test_clamps_start_before_2000():

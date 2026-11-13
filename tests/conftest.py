@@ -7,6 +7,7 @@ import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FIXED_NOW = datetime(2021, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
+FIXTURE_IDS = ("WPU10", "WPU101", "PCOPPUSDM")
 
 
 def load_raw(series_id: str) -> dict:
@@ -22,7 +23,7 @@ class FakeCtx:
 
 @pytest.fixture
 def raw_fixtures():
-    return {sid: load_raw(sid) for sid in ("WPU10", "WPU101")}
+    return {sid: load_raw(sid) for sid in FIXTURE_IDS}
 
 
 @pytest.fixture
@@ -40,7 +41,7 @@ def offline_pipeline(local_output, monkeypatch):
     """
     from metals_pipeline import nodes
 
-    served = {sid: load_raw(sid) for sid in ("WPU10", "WPU101")}
+    served = {sid: load_raw(sid) for sid in FIXTURE_IDS}
     monkeypatch.setenv("FRED_API_KEY", "x" * 32)
     monkeypatch.setattr(nodes, "_now_utc", lambda: FIXED_NOW)
     monkeypatch.setattr(nodes.fred, "fetch_series_info",

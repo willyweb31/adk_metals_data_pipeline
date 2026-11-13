@@ -43,7 +43,7 @@ def test_gap_over_one_month_fails(monthly):
 
 def test_non_positive_index_fails(monthly):
     bad = monthly.copy()
-    bad.loc[(bad.series_id == "WPU101") & (bad.date == "2020-05-01"), "index_value"] = 0.0
+    bad.loc[(bad.series_id == "WPU101") & (bad.date == "2020-05-01"), "value"] = 0.0
     assert ("WPU101", "positive_values") in failed(run(bad))
 
 
@@ -62,10 +62,21 @@ def test_stale_data_fails(monthly):
     assert ("WPU10", "freshness") in failed(run(monthly, today=date(2022, 1, 1)))
 
 
+def test_market_prices_get_a_longer_freshness_window(monthly):
+    # Latest fixture month is 2021-06-01. 100 days later an index is stale
+    # (max 90) but a market price, which IMF publishes later, is not (max 120).
+    series = ("WPU10", "PCOPPUSDM")
+    report = run(monthly, today=date(2021, 9, 9), series=series)
+    assert ("WPU10", "freshness") in failed(report)
+    assert ("PCOPPUSDM", "freshness") not in failed(report)
+    # 130 days later the market price is stale too.
+    assert ("PCOPPUSDM", "freshness") in failed(run(monthly, today=date(2021, 10, 9), series=series))
+
+
 def test_null_share_over_five_percent_fails(monthly):
     bad = monthly.copy()
     mask = (bad.series_id == "WPU10") & bad.date.isin(pd.to_datetime(["2019-03-01", "2019-04-01"]))
-    bad.loc[mask, "index_value"] = float("nan")  # 3 of 30 rows null = 10%
+    bad.loc[mask, "value"] = float("nan")  # 3 of 30 rows null = 10%
     assert ("WPU10", "null_share") in failed(run(bad))
 
 

@@ -108,7 +108,7 @@ def make_plan(plan: RunPlan, now: datetime) -> ValidatedPlan:
                 f"None of the requested series are in the allowlist: {', '.join(rejected)}"
             )
         series_ids = list(config.DEFAULT_SERIES)
-        notes.append("No series requested; using all six.")
+        notes.append("No series requested; using every allowlisted series.")
 
     try:
         start = _parse_start(plan.start_date)
@@ -207,15 +207,14 @@ def transform(ctx: Context, node_input: IngestResult) -> MetricsSummary:
     plan = ValidatedPlan.model_validate(ctx.state["plan"])
     store = get_store()
 
-    parsed, labels, units = {}, {}, set()
+    parsed, labels, units = {}, {}, {}
     for s in node_input.series:
         df, _ = tx.parse_observations(store.get_json(s.raw_path))
         parsed[s.series_id] = df
         labels[s.series_id] = s.title
-        if s.units:
-            units.add(s.units)
+        units[s.series_id] = s.units
 
-    monthly = tx.build_monthly(parsed, labels, plan.base_month)
+    monthly = tx.build_monthly(parsed, labels, plan.base_month, units)
     annual = tx.build_annual(monthly)
     latest = tx.build_latest(monthly)
 
@@ -226,20 +225,28 @@ def transform(ctx: Context, node_input: IngestResult) -> MetricsSummary:
 
     # The summary (what the analyst sees and the dashboard table shows) is rounded
     # to display precision, so the commentary can quote numbers exactly as the
-    # table prints them. Full precision stays in latest.csv.
+    # table prints them. Full precision stays in latest.csv. Dollar amounts keep
+    # cents (2 dp); index levels keep 1 dp.
     rows = []
     for r in latest.to_dict("records"):
         rank = r.get("yoy_rank")
+        kind = str(r.get("kind") or "ppi")
+        lvl = 2 if kind == "market" else 1
+        units_text = r.get("units")
         rows.append(SeriesLatest(
             series_id=r["series_id"],
             label=report.short_label(str(r.get("label") or r["series_id"])),
+            kind=kind,
+            units=units_text if isinstance(units_text, str) else "",
             as_of=str(r.get("as_of") or ""),
-            index_value=_num(r.get("index_value"), 1),
+            value=_num(r.get("value"), lvl),
+            mom_change=_num(r.get("mom_change"), lvl),
             mom_pct=_num(r.get("mom_pct"), 2),
+            yoy_change=_num(r.get("yoy_change"), lvl),
             yoy_pct=_num(r.get("yoy_pct"), 1),
             vol_12m=_num(r.get("vol_12m"), 2),
-            high_5y=_num(r.get("high_5y"), 1),
-            low_5y=_num(r.get("low_5y"), 1),
+            high_5y=_num(r.get("high_5y"), lvl),
+            low_5y=_num(r.get("low_5y"), lvl),
             yoy_rank=None if rank is None or rank != rank or str(rank) == "<NA>" else int(rank),
         ))
     as_ofs = [r.as_of for r in rows if r.as_of]
@@ -249,10 +256,12 @@ def transform(ctx: Context, node_input: IngestResult) -> MetricsSummary:
         base_month=plan.base_month,
         focus=plan.focus,
         units_note=(
-            "Index levels are BLS producer price indexes ("
-            + "; ".join(sorted(units))
-            + "). mom_pct and yoy_pct are percent changes; vol_12m is the "
-            "12-month standard deviation of mom_pct in percentage points."
+            "Series with kind 'ppi' are BLS producer price indexes; value, "
+            "mom_change, yoy_change, high_5y and low_5y are index points. Series "
+            "with kind 'market' are IMF global prices; those fields are U.S. "
+            "dollars per metric ton (see each series' units). mom_pct and yoy_pct "
+            "are percent changes; vol_12m is the 12-month standard deviation of "
+            "mom_pct in percentage points."
         ),
         series=rows,
         processed_paths=paths,

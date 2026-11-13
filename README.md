@@ -1,6 +1,6 @@
 ﻿# adk_metals_data_pipeline
 
-An agentic data pipeline built with **Google ADK 2.x**. It pulls six U.S. metals producer price indexes from the FRED API, computes trend and volatility metrics with pandas, writes raw and processed files to cloud object storage (Amazon S3, Azure Blob Storage, Google Cloud Storage, or a local folder), and publishes a static HTML dashboard with AI-written commentary.
+An agentic data pipeline built with **Google ADK 2.x**. It pulls six U.S. metals producer price indexes and five global metal prices in U.S. dollars per metric ton from the FRED API, computes trend and volatility metrics with pandas, writes raw and processed files to cloud object storage (Amazon S3, Azure Blob Storage, Google Cloud Storage, or a local folder), and publishes a static HTML dashboard with AI-written commentary.
 
 One command runs it:
 
@@ -13,7 +13,7 @@ adk run metals_pipeline "Refresh the metals price dashboard from 2018, focus on 
 1. A **planner** LLM agent turns the request into a structured `RunPlan` (series, start date, base month, focus).
 2. `validate_plan` checks the plan against a series allowlist, clamps dates, and assigns a `run_id`.
 3. `ingest` calls FRED for each series and stores the raw JSON exactly as returned.
-4. `transform` cleans the data and computes rebased indexes, MoM %, YoY %, rolling 12-month volatility, an annual rollup, and a latest snapshot.
+4. `transform` cleans the data and computes rebased indexes, MoM and YoY changes (in % and in dollars or index points), rolling 12-month volatility, an annual rollup, and a latest snapshot.
 5. `quality_gate` runs data checks and routes the run to **pass** or **fail**.
 6. On pass, an **analyst** LLM agent writes 3 to 5 insights using only the computed figures, and `publish` renders the dashboard and writes a run manifest.
 7. On fail, `report_failure` writes a manifest explaining which checks failed, and nothing is published.
@@ -49,7 +49,19 @@ root_agent = Workflow(
 
 ## Data
 
-Six monthly BLS producer price indexes, via FRED:
+Eleven monthly series, all via FRED and pulled with the same API key.
+
+**Market prices** (IMF global prices, U.S. dollars per metric ton):
+
+| Series | Measures |
+| --- | --- |
+| `PCOPPUSDM` | Copper |
+| `PALUMUSDM` | Aluminum |
+| `PNICKUSDM` | Nickel |
+| `PZINCUSDM` | Zinc |
+| `PIORECRUSDM` | Iron ore (per dry metric ton) |
+
+**Producer price indexes** (BLS, index levels such as 1982=100, not dollars):
 
 | Series | Measures |
 | --- | --- |
@@ -61,6 +73,8 @@ Six monthly BLS producer price indexes, via FRED:
 | `PCU331110331110` | Iron and steel mills and ferroalloy manufacturing |
 
 Series titles and units shown on the dashboard come from FRED's `series` endpoint. None are typed by hand.
+
+The IMF prices are published about a month after the BLS indexes, so the market prices on a dashboard are usually one month behind the indexes. FRED has no steel price in dollars per ton, so steel appears only as indexes.
 
 ## Prerequisites
 
@@ -173,15 +187,15 @@ The same layout is used in the S3 bucket, the Azure container, the GCS bucket, a
 
 ```text
 raw/fred/{series_id}/ingest_date={YYYY-MM-DD}/{run_id}.json     raw FRED response + request metadata
-processed/metals_ppi/run_id={run_id}/monthly.csv                series x month: index, rebased_100, mom_pct, yoy_pct, vol_12m
-processed/metals_ppi/run_id={run_id}/annual.csv                 series x year: avg/min/max index, avg YoY, months (partial-year flag)
-processed/metals_ppi/run_id={run_id}/latest.csv                 series: latest values, 5-year high/low, YoY rank
+processed/metals_ppi/run_id={run_id}/monthly.csv                series x month: kind, units, value, rebased_100, mom/yoy change and %, vol_12m
+processed/metals_ppi/run_id={run_id}/annual.csv                 series x year: avg/min/max value, avg YoY, months (partial-year flag)
+processed/metals_ppi/run_id={run_id}/latest.csv                 series: latest values, dollar/point and % changes, 5-year high/low, YoY rank
 site/run_id={run_id}/index.html                                 dashboard for this run
 site/latest/index.html                                          most recent dashboard
 runs/{run_id}/manifest.json                                     plan, row/null counts, checks, paths, timings, versions
 ```
 
-The dashboard is one self-contained HTML file with its data embedded. It loads Chart.js from a pinned CDN version and shows the AI commentary, a rebased line chart, a sorted YoY bar chart, a summary table, and a footer listing object paths, checks passed, and the ADK version.
+The dashboard is one self-contained HTML file with its data embedded. It loads Chart.js from a pinned CDN version and shows the AI commentary, a card for each metal with its dollar price, monthly and yearly change, and a small price chart, a rebased line chart of the indexes, a YoY bar chart covering every series, tables of market prices and indexes, and a footer listing object paths, checks passed, and the ADK version.
 
 ## Tests
 
@@ -193,8 +207,8 @@ The tests use no network and no LLM. They run on trimmed fixtures in `tests/fixt
 
 | File | Covers |
 | --- | --- |
-| `test_transform.py` | MoM / YoY / rebased values for hand-checked months, `.` values counted as nulls, partial-year flag, latest table |
-| `test_quality.py` | Gate fails on duplicate dates, gaps, non-positive values, zero or too few rows, stale data, high null share, extreme YoY |
+| `test_transform.py` | MoM / YoY / rebased values for hand-checked months, dollar changes for copper, `.` values counted as nulls, partial-year flag, latest table |
+| `test_quality.py` | Gate fails on duplicate dates, gaps, non-positive values, zero or too few rows, stale data (longer window for market prices), high null share, extreme YoY |
 | `test_validate_plan.py` | Allowlist rejection, start-date clamping, base-month fixes |
 | `test_storage_local.py` | `LocalStore` writes and reads back the exact contract paths, rejects path escapes |
 | `test_storage_s3.py` | `S3Store` with a mocked boto3 client: keys, content types, 404 handling, config errors |
@@ -204,7 +218,7 @@ The tests use no network and no LLM. They run on trimmed fixtures in `tests/fixt
 
 ## Quality checks (run on live data)
 
-Every series must have at least 24 rows, unique month-start dates with no gaps, positive values, a latest month no older than 90 days, a null share under 5%, a latest YoY within ±100%, and a value at the base month.
+Every series must have at least 24 rows, unique month-start dates with no gaps, positive values, a latest month no older than 90 days (120 days for the IMF market prices, which are published later), a null share under 5%, a latest YoY within ±100%, and a value at the base month.
 
 ## Design decisions
 
@@ -220,6 +234,7 @@ Every series must have at least 24 rows, unique month-start dates with no gaps, 
 - If one FRED call fails after retries, the whole run fails, with no partial publish.
 - Quality thresholds are constants in `config.py`.
 - BLS revises recent months. Each run re-pulls full history but does not track revisions.
+- There is no steel price in dollars; steel is covered by producer price indexes only.
 - The analyst's figures are constrained by the prompt but not yet verified automatically.
 
 ## Repository layout

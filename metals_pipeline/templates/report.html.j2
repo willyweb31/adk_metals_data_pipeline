@@ -37,6 +37,13 @@
   .grid section { margin-top: 18px; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; gap: 0; } }
   .chart { position: relative; height: 340px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 8px; min-width: 0; }
+  .card .name { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .card .price { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; }
+  .card .unit { font-size: 11.5px; color: var(--muted); }
+  .card .chg { font-size: 12.5px; margin-top: 4px; }
+  .card .spark { position: relative; height: 70px; margin-top: 6px; }
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
@@ -56,7 +63,7 @@
     <div class="meta">
       <span>Data through <strong>{{ data_through }}</strong></span>
       <span>Run <code>{{ summary.run_id }}</code></span>
-      <span>Source: U.S. Bureau of Labor Statistics producer price indexes, via FRED (Federal Reserve Bank of St. Louis)</span>
+      <span>Sources: U.S. Bureau of Labor Statistics producer price indexes and IMF global commodity prices, via FRED (Federal Reserve Bank of St. Louis)</span>
     </div>
   </header>
 
@@ -71,33 +78,85 @@
     <p class="sub" style="margin:10px 0 0">Written by the analyst agent from the computed figures in <code>latest.csv</code> only. Check against the table below before relying on it.</p>
   </section>
 
+  {% if market_rows %}
+  <section aria-labelledby="m-h">
+    <h2 id="m-h">Market prices (U.S. dollars per metric ton)</h2>
+    <p class="sub">IMF monthly global prices{% if market_through %}, latest {{ market_through }}{% endif %}. Change vs. the prior month and the same month a year earlier. Each chart has its own dollar scale.</p>
+    <div class="cards">
+      {% for r in market_rows %}
+      <div class="card">
+        <div class="name">{{ r.label }}</div>
+        <div class="price">{{ r.value | usd }}</div>
+        <div class="unit">{{ r.units or "U.S. dollars per metric ton" }} · {{ r.as_of[:7] }}</div>
+        <div class="chg">
+          <span class="{{ 'pos' if (r.mom_change or 0) > 0 else 'neg' if (r.mom_change or 0) < 0 }}">MoM {{ r.mom_change | usd(True) }} ({{ r.mom_pct | fmt(2, True) }}%)</span><br>
+          <span class="{{ 'pos' if (r.yoy_pct or 0) > 0 else 'neg' if (r.yoy_pct or 0) < 0 }}">YoY {{ r.yoy_change | usd(True) }} ({{ r.yoy_pct | fmt(1, True) }}%)</span>
+        </div>
+        <div class="spark"><canvas id="spark-{{ r.series_id }}" role="img" aria-label="{{ r.label }} price in dollars per metric ton over time"></canvas></div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <div class="grid">
     <section aria-labelledby="c1-h">
-      <h2 id="c1-h">Price indexes, rebased</h2>
+      <h2 id="c1-h">Producer price indexes, rebased</h2>
       <p class="sub">Each series = 100 in {{ base_month_label }}, so different index bases compare on one scale.</p>
       <div class="chart"><canvas id="lineChart" role="img" aria-label="Line chart of rebased metals price indexes"></canvas></div>
     </section>
     <section aria-labelledby="c2-h">
       <h2 id="c2-h">Year-over-year change</h2>
-      <p class="sub">Latest month vs. the same month a year earlier, %.</p>
+      <p class="sub">Latest month vs. the same month a year earlier, %, for market prices and indexes.</p>
       <div class="chart"><canvas id="barChart" role="img" aria-label="Bar chart of year-over-year percent change by series"></canvas></div>
     </section>
   </div>
 
-  <section aria-labelledby="t-h">
-    <h2 id="t-h">Latest readings</h2>
+  {% if market_rows %}
+  <section aria-labelledby="tm-h">
+    <h2 id="tm-h">Latest market prices ($ per metric ton)</h2>
     <p class="sub">Sorted by YoY change. Volatility is the 12-month standard deviation of monthly % changes (percentage points).</p>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Metal</th><th>As of</th><th>Price</th><th>MoM $</th><th>MoM %</th><th>YoY $</th><th>YoY %</th><th>12m vol</th><th>5y high</th><th>5y low</th></tr>
+      </thead>
+      <tbody>
+        {% for r in market_rows %}
+        <tr>
+          <td>{{ r.label }}<span class="id">{{ r.series_id }}</span></td>
+          <td>{{ r.as_of[:7] }}</td>
+          <td>{{ r.value | usd }}</td>
+          <td class="{{ 'pos' if (r.mom_change or 0) > 0 else 'neg' if (r.mom_change or 0) < 0 }}">{{ r.mom_change | usd(True) }}</td>
+          <td class="{{ 'pos' if (r.mom_pct or 0) > 0 else 'neg' if (r.mom_pct or 0) < 0 }}">{{ r.mom_pct | fmt(2, True) }}</td>
+          <td class="{{ 'pos' if (r.yoy_change or 0) > 0 else 'neg' if (r.yoy_change or 0) < 0 }}">{{ r.yoy_change | usd(True) }}</td>
+          <td class="{{ 'pos' if (r.yoy_pct or 0) > 0 else 'neg' if (r.yoy_pct or 0) < 0 }}">{{ r.yoy_pct | fmt(1, True) }}</td>
+          <td>{{ r.vol_12m | fmt(2) }}</td>
+          <td>{{ r.high_5y | usd }}</td>
+          <td>{{ r.low_5y | usd }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if ppi_rows %}
+  <section aria-labelledby="t-h">
+    <h2 id="t-h">Latest producer price indexes</h2>
+    <p class="sub">Index levels, not dollars. Sorted by YoY change. Volatility is the 12-month standard deviation of monthly % changes (percentage points).</p>
     <div class="table-wrap">
     <table>
       <thead>
         <tr><th>Series</th><th>As of</th><th>Index</th><th>MoM %</th><th>YoY %</th><th>12m vol</th><th>5y high</th><th>5y low</th></tr>
       </thead>
       <tbody>
-        {% for r in rows %}
+        {% for r in ppi_rows %}
         <tr>
           <td>{{ r.label }}<span class="id">{{ r.series_id }}</span></td>
           <td>{{ r.as_of[:7] }}</td>
-          <td>{{ r.index_value | fmt(1) }}</td>
+          <td>{{ r.value | fmt(1) }}</td>
           <td class="{{ 'pos' if (r.mom_pct or 0) > 0 else 'neg' if (r.mom_pct or 0) < 0 }}">{{ r.mom_pct | fmt(2, True) }}</td>
           <td class="{{ 'pos' if (r.yoy_pct or 0) > 0 else 'neg' if (r.yoy_pct or 0) < 0 }}">{{ r.yoy_pct | fmt(1, True) }}</td>
           <td>{{ r.vol_12m | fmt(2) }}</td>
@@ -109,6 +168,7 @@
     </table>
     </div>
   </section>
+  {% endif %}
 
   <footer>
     <div>Quality checks passed: <strong>{{ checks_passed }}/{{ checks_total }}</strong> · google-adk {{ adk_version }} · generated {{ generated_at }}</div>
@@ -139,7 +199,38 @@
   Chart.defaults.borderColor = v("--line");
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
 
-  new Chart(document.getElementById("lineChart"), {
+  var usd = function (x) {
+    return x == null ? "n/a" : "$" + x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  var usdShort = function (x) {
+    return x >= 1000 ? "$" + (x / 1000).toFixed(x >= 10000 ? 0 : 1) + "k" : "$" + Math.round(x);
+  };
+  (data.market || []).forEach(function (m, i) {
+    var el = document.getElementById("spark-" + m.id);
+    if (!el) return;
+    var color = palette[i % palette.length];
+    // Fit the scale to the data (not $0) so each metal's movement is visible.
+    var vals = m.data.filter(function (x) { return x != null; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), pad = (hi - lo) * 0.08 || hi * 0.05;
+    new Chart(el, {
+      type: "line",
+      data: { labels: m.months, datasets: [{ data: m.data, borderColor: color, backgroundColor: color,
+               borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 2, tension: 0.15, spanGaps: false }] },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (c) { return usd(c.parsed.y) + " / t"; } } } },
+        scales: {
+          x: { display: false },
+          y: { min: Math.max(0, lo - pad), max: hi + pad, ticks: { count: 3, font: { size: 10 }, callback: function (val) { return usdShort(val); } },
+               grid: { color: v("--line") } }
+        }
+      }
+    });
+  });
+
+  if (data.lines.length) new Chart(document.getElementById("lineChart"), {
     type: "line",
     data: {
       labels: data.months,
@@ -167,7 +258,8 @@
   new Chart(document.getElementById("barChart"), {
     type: "bar",
     data: {
-      labels: data.bars.map(function (b) { return b.label; }),
+      // Market prices are tagged "($)" so they read apart from the indexes.
+      labels: data.bars.map(function (b) { return b.label + (b.kind === "market" ? " ($)" : ""); }),
       datasets: [{
         label: "YoY %",
         data: data.bars.map(function (b) { return b.yoy; }),
@@ -179,12 +271,15 @@
       indexAxis: "y",
       maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function (c) {
-          return (c.parsed.x >= 0 ? "+" : "") + c.parsed.x.toFixed(1) + "%"; } } } },
+        tooltip: { callbacks: {
+          title: function (items) { return items[0].label; },
+          label: function (c) { return (c.parsed.x >= 0 ? "+" : "") + c.parsed.x.toFixed(1) + "%"; } } } },
       scales: {
         x: { title: { display: true, text: "YoY change (%)" },
              grid: { color: function (c) { return c.tick.value === 0 ? v("--muted") : v("--line"); } } },
-        y: { ticks: { autoSkip: false } }
+        y: { ticks: { autoSkip: false, callback: function (val) {
+               var t = this.getLabelForValue(val);
+               return t.length > 26 ? t.slice(0, 24) + "…" : t; } } }
       }
     }
   });
