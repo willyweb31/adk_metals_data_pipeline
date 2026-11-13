@@ -76,7 +76,7 @@ Series titles and units shown on the dashboard come from FRED's `series` endpoin
 Windows (PowerShell). On macOS or Linux, use `source .venv/bin/activate` and `cp` instead.
 
 ```powershell
-git clone <repo-url>
+git clone https://github.com/willyweb31/adk_metals_data_pipeline.git
 cd adk_metals_data_pipeline
 python -m venv .venv
 .venv\Scripts\activate
