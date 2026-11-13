@@ -2,7 +2,7 @@
 
 An agentic data pipeline built with **Google ADK 2.x**. It pulls six U.S. metals producer price indexes from the FRED API, computes trend and volatility metrics with pandas, writes raw and processed files to cloud object storage (Amazon S3, Azure Blob Storage, Google Cloud Storage, or a local folder), and publishes a static HTML dashboard with AI-written commentary.
 
-One command runs the whole thing:
+One command runs it:
 
 ```powershell
 adk run metals_pipeline "Refresh the metals price dashboard from 2018, focus on steel"
