@@ -129,3 +129,35 @@ def azure_account_url() -> str | None:
 
 def azure_connection_string() -> str | None:
     return os.getenv("AZURE_STORAGE_CONNECTION_STRING", "").strip() or None
+
+
+def _first_env(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return None
+
+
+def s3_bucket() -> str:
+    # `Bucket` is accepted for older .env files; S3_BUCKET is the documented name.
+    bucket = _first_env("S3_BUCKET", "Bucket")
+    if not bucket:
+        raise RuntimeError("STORAGE_BACKEND=s3 requires S3_BUCKET in .env.")
+    return bucket
+
+
+def aws_region() -> str | None:
+    return _first_env("AWS_REGION", "AWS_DEFAULT_REGION", "Region")
+
+
+def s3_credentials() -> tuple[str, str] | None:
+    """Explicit keys from .env, or None to use boto3's default chain
+    (AWS_ACCESS_KEY_ID env vars, ~/.aws/credentials, `aws sso login`, IAM role)."""
+    key_id = _first_env("S3_AccessKeyId")
+    secret = _first_env("S3_SecretAccessKey")
+    if key_id and secret:
+        return key_id, secret
+    if key_id or secret:
+        raise RuntimeError("Set both S3_AccessKeyId and S3_SecretAccessKey in .env, or neither.")
+    return None

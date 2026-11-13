@@ -1,9 +1,9 @@
 """Object storage backends with one interface.
 
-LocalStore writes under `output/`; AzureBlobStore writes to an Azure Blob
-Storage container; GCSStore writes to a Google Cloud Storage bucket. All use
-the same object paths, so switching is one env var:
-STORAGE_BACKEND=local|azure|gcs. An S3 backend would be one more subclass.
+LocalStore writes under `output/`; S3Store writes to an Amazon S3 bucket;
+AzureBlobStore writes to an Azure Blob Storage container; GCSStore writes to a
+Google Cloud Storage bucket. All use the same object paths, so switching is one
+env var: STORAGE_BACKEND=local|s3|azure|gcs.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ def _clean(path: str) -> str:
 
 class Store(ABC):
     backend: str
-    location: str  # local folder or gs://bucket, for manifests and messages
+    location: str  # local folder, s3://bucket, gs://bucket or container URL
 
     @abstractmethod
     def put_bytes(self, path: str, data: bytes, content_type: str) -> str:
@@ -161,10 +161,58 @@ class AzureBlobStore(Store):
         return f"{self.location}/{_clean(path)}"
 
 
+class S3Store(Store):
+    """Amazon S3 bucket.
+
+    Credentials: S3_AccessKeyId / S3_SecretAccessKey from .env if set, otherwise
+    boto3's default chain (AWS_ACCESS_KEY_ID env vars, ~/.aws, SSO, IAM role).
+    """
+
+    backend = "s3"
+
+    def __init__(self, bucket: str, region: str | None = None,
+                 credentials: tuple[str, str] | None = None, client: Any = None):
+        if client is None:
+            import boto3  # imported lazily: other backends never need it
+
+            kwargs: dict[str, Any] = {"region_name": region}
+            if credentials:
+                kwargs["aws_access_key_id"], kwargs["aws_secret_access_key"] = credentials
+            client = boto3.client("s3", **kwargs)
+        self.bucket_name = bucket
+        self.location = f"s3://{bucket}"
+        self._s3 = client
+
+    def put_bytes(self, path: str, data: bytes, content_type: str) -> str:
+        self._s3.put_object(Bucket=self.bucket_name, Key=_clean(path), Body=data,
+                            ContentType=content_type)
+        return self.uri(path)
+
+    def get_bytes(self, path: str) -> bytes:
+        return self._s3.get_object(Bucket=self.bucket_name, Key=_clean(path))["Body"].read()
+
+    def exists(self, path: str) -> bool:
+        from botocore.exceptions import ClientError
+
+        try:
+            self._s3.head_object(Bucket=self.bucket_name, Key=_clean(path))
+            return True
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+                return False
+            raise
+
+    def uri(self, path: str) -> str:
+        return f"s3://{self.bucket_name}/{_clean(path)}"
+
+
 def get_store() -> Store:
     backend = config.storage_backend()
     if backend == "local":
         return LocalStore(config.output_dir())
+    if backend == "s3":
+        return S3Store(config.s3_bucket(), region=config.aws_region(),
+                       credentials=config.s3_credentials())
     if backend == "gcs":
         return GCSStore(config.gcs_bucket(), project=config.gcp_project())
     if backend == "azure":
@@ -173,4 +221,6 @@ def get_store() -> Store:
             account_url=config.azure_account_url(),
             connection_string=config.azure_connection_string(),
         )
-    raise RuntimeError(f"Unknown STORAGE_BACKEND {backend!r}; use 'local', 'gcs', or 'azure'.")
+    raise RuntimeError(
+        f"Unknown STORAGE_BACKEND {backend!r}; use 'local', 's3', 'gcs', or 'azure'."
+    )
